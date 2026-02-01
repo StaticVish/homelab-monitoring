@@ -14,6 +14,7 @@ sudo k3s kubectl create namespace monitoring --dry-run=client -o yaml | sudo k3s
 
 echo "Applying Secrets..."
 sops --decrypt k8s/overlays/prod/secrets/alertmanager-secret.enc.yaml | sudo k3s kubectl apply -f -
+sops --decrypt k8s/overlays/prod/secrets/grafana-admin.enc.yaml | sudo k3s kubectl apply -f -
 
 echo "Applying Monitoring Stack..."
 # Using kustomize to build the manifests (including the HelmChart CRD)
