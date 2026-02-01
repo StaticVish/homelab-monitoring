@@ -17,6 +17,6 @@ sops --decrypt k8s/overlays/prod/secrets/alertmanager-secret.enc.yaml | sudo k3s
 
 echo "Applying Monitoring Stack..."
 # Using kustomize to build the manifests (including the HelmChart CRD)
-kustomize build k8s/overlays/prod | sudo k3s kubectl apply -f -
+kustomize build k8s/overlays/prod | sudo k3s kubectl apply --server-side -f -
 
 echo "Deployment Complete."
