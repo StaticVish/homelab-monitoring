@@ -10,9 +10,13 @@ spec:
   targetNamespace: monitoring
   valuesContent: |
     grafana:
+      enabled: true
       adminPassword: "admin"
       service:
         type: ClusterIP
+        annotations:
+          tailscale.com/expose: "true"
+          tailscale.com/hostname: "grafana"
 
     prometheus:
       prometheusSpec:
@@ -29,6 +33,4 @@ spec:
     nodeExporter:
       enabled: true
     kubeStateMetrics:
-      enabled: true
-    grafana:
       enabled: true
