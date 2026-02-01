@@ -9,6 +9,9 @@ fi
 
 export SOPS_AGE_KEY_FILE=$(pwd)/key.txt
 
+echo "Ensuring namespace exists..."
+sudo k3s kubectl create namespace monitoring --dry-run=client -o yaml | sudo k3s kubectl apply -f -
+
 echo "Applying Secrets..."
 sops --decrypt k8s/overlays/prod/secrets/alertmanager-secret.enc.yaml | sudo k3s kubectl apply -f -
 
