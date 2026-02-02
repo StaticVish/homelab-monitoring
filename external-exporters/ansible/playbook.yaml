@@ -1,0 +1,64 @@
+---
+- name: Install Node Exporter
+  hosts: nodes
+  become: true
+  vars:
+    node_exporter_version: "1.8.2"
+    node_exporter_bin: "/usr/local/bin/node_exporter"
+    download_url: "https://github.com/prometheus/node_exporter/releases/download/v{{ node_exporter_version }}/node_exporter-{{ node_exporter_version }}.linux-amd64.tar.gz"
+
+  tasks:
+    - name: Create node_exporter user
+      user:
+        name: node_exporter
+        shell: /bin/false
+        system: true
+        create_home: false
+
+    - name: Download and unarchive Node Exporter
+      unarchive:
+        src: "{{ download_url }}"
+        dest: "/tmp"
+        remote_src: true
+
+    - name: Move Node Exporter binary to /usr/local/bin
+      copy:
+        src: "/tmp/node_exporter-{{ node_exporter_version }}.linux-amd64/node_exporter"
+        dest: "{{ node_exporter_bin }}"
+        mode: "0755"
+        owner: node_exporter
+        group: node_exporter
+        remote_src: true
+
+    - name: Create Systemd Service File
+      copy:
+        dest: /etc/systemd/system/node_exporter.service
+        content: |
+          [Unit]
+          Description=Node Exporter
+          Wants=network-online.target
+          After=network-online.target
+
+          [Service]
+          User=node_exporter
+          Group=node_exporter
+          Type=simple
+          ExecStart={{ node_exporter_bin }}
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Reload systemd to read new service
+      systemd:
+        daemon_reload: true
+
+    - name: Enable and start Node Exporter service
+      systemd:
+        name: node_exporter
+        enabled: true
+        state: started
+
+    - name: Clean up downloaded archive
+      file:
+        path: "/tmp/node_exporter-{{ node_exporter_version }}.linux-amd64"
+        state: absent

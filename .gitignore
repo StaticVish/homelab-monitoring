@@ -1,4 +1,4 @@
 key.txt
 .idea/
 .DS_Store
-./k8s/overlays/prod/secrets/alertmanager-secret.yaml
+k8s/overlays/prod/secrets/alertmanager-secret.yaml
