@@ -21,8 +21,9 @@ spec:
         additionalScrapeConfigs:
           - job_name: 'external-nodes'
             static_configs:
-              - targets: [] # Add your external node IPs here
-
+              - targets:
+                - "100.68.146.98:9100"
+                - "100.125.141.53:9100"
     alertmanager:
       alertmanagerSpec:
         useExistingSecret: true
