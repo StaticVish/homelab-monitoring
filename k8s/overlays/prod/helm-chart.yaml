@@ -24,6 +24,8 @@ spec:
               - targets:
                 - "100.68.146.98:9100"
                 - "100.125.141.53:9100"
+                - "100.74.92.34:9100"
+                - "100.105.161.10:9100"
     alertmanager:
       alertmanagerSpec:
         useExistingSecret: true
