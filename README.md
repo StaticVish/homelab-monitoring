@@ -8,6 +8,13 @@ Powered by **Incus / LXD**, **VictoriaMetrics**, **Grafana**, **vmalert**, **Ale
 
 ## Architecture Overview
 
+<p align="center">
+  <img src="docs/images/architecture.png" alt="Homelab Monitoring & Tailscale CMDB Architecture" width="850">
+</p>
+
+<details>
+<summary><b>View Mermaid Architecture Code</b></summary>
+
 ```mermaid
 architecture-beta
     group host(server)[Host Server (Linux / ARM / x86)]
@@ -45,6 +52,8 @@ architecture-beta
     nas:T --> B:vm
 ```
 
+</details>
+
 ---
 
 ## Key Highlights
@@ -59,6 +68,13 @@ architecture-beta
 ---
 
 ## Service Discovery & Data Pipeline
+
+<p align="center">
+  <img src="docs/images/pipeline.png" alt="Tailscale Discovery & Alerting Lifecycle" width="850">
+</p>
+
+<details>
+<summary><b>View Sequence Flowchart Code</b></summary>
 
 ```mermaid
 sequenceDiagram
@@ -81,6 +97,8 @@ sequenceDiagram
         AM->>TG: Delivers formatted HTML card with dashboard deep-link
     end
 ```
+
+</details>
 
 ---
 
