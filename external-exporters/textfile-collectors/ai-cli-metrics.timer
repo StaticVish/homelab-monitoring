@@ -1,0 +1,10 @@
+[Unit]
+Description=Run AI CLI Metrics Collector periodically
+
+[Timer]
+OnBootSec=1m
+OnUnitActiveSec=2m
+AccuracySec=10s
+
+[Install]
+WantedBy=timers.target

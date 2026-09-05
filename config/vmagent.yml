@@ -1,0 +1,21 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  # Dynamic Tailscale Node Discovery (HTTP SD)
+  # Automatically scrapes host hardware, OS, and all local Textfile Collectors (LiteLLM, AI CLI tools, etc.)
+  - job_name: 'tailscale-nodes'
+    scrape_interval: 15s
+    http_sd_configs:
+      - url: 'http://127.0.0.1:8080/targets'
+        refresh_interval: 30s
+
+  # VictoriaMetrics self-monitoring
+  - job_name: 'victoriametrics'
+    static_configs:
+      - targets: ['127.0.0.1:8428']
+
+  # Grafana self-monitoring
+  - job_name: 'grafana'
+    static_configs:
+      - targets: ['127.0.0.1:3000']

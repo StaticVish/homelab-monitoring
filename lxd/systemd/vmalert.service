@@ -1,0 +1,20 @@
+[Unit]
+Description=VictoriaMetrics Alerting Service (vmalert)
+After=network-online.target victoria-metrics.service alertmanager.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/local/bin/vmalert \
+  -rule=/mnt/monitoring/config/alerts/*.yml \
+  -datasource.url=http://127.0.0.1:8428 \
+  -notifier.url=http://127.0.0.1:9093 \
+  -evaluationInterval=15s \
+  -httpListenAddr=:8880
+Restart=always
+RestartSec=5
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

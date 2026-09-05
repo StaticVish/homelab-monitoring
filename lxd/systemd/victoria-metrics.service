@@ -1,0 +1,19 @@
+[Unit]
+Description=VictoriaMetrics Time Series Database & Scraper
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/local/bin/victoria-metrics \
+  -storageDataPath=/mnt/monitoring/data/victoria-metrics \
+  -promscrape.config=/mnt/monitoring/config/vmagent.yml \
+  -promscrape.config.strictParse=false \
+  -httpListenAddr=:8428
+Restart=always
+RestartSec=5
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

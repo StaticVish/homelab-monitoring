@@ -1,0 +1,12 @@
+[Unit]
+Description=AI CLI Metrics Collector for Node Exporter
+After=network.target
+
+[Service]
+Type=oneshot
+User=archiventechnologies
+Environment=HOME=/home/archiventechnologies
+Environment=PATH=/home/archiventechnologies/.opencode/bin:/home/archiventechnologies/.local/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=/usr/bin/python3 /usr/local/bin/ai_cli_metrics.py --output /var/lib/node_exporter/textfile_collector/ai_metrics.prom
+StandardOutput=journal
+StandardError=journal

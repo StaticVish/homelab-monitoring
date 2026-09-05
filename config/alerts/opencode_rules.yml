@@ -1,0 +1,73 @@
+groups:
+  - name: opencode_quota_alerts
+    interval: 15s
+    rules:
+      # Step 1: 60% Used (40% remaining)
+      - alert: OpenCodeQuota60PercentUsed
+        expr: opencode_quota_remaining_percent <= 40 and opencode_quota_remaining_percent > 30
+        for: 1m
+        labels:
+          severity: warning
+          category: quota
+          usage_step: "60%"
+        annotations:
+          summary: "OpenCode quota 60% used ({{ $labels.window }})"
+          progress_bar: "[██████░░░░] 60% Used · 40% Remaining"
+          description: "OpenCode {{ $labels.provider }} quota on {{ $labels.instance }} has reached 60% usage ({{ $value | printf \"%.1f\" }}% remaining in {{ $labels.window }} window)."
+          dashboard_url: "https://monitoring.<your-tailnet>.ts.net/d/litellm-agents-telemetry/agent-observability"
+
+      # Step 2: 70% Used (30% remaining)
+      - alert: OpenCodeQuota70PercentUsed
+        expr: opencode_quota_remaining_percent <= 30 and opencode_quota_remaining_percent > 20
+        for: 1m
+        labels:
+          severity: warning
+          category: quota
+          usage_step: "70%"
+        annotations:
+          summary: "OpenCode quota 70% used ({{ $labels.window }})"
+          progress_bar: "[███████░░░] 70% Used · 30% Remaining"
+          description: "OpenCode {{ $labels.provider }} quota on {{ $labels.instance }} has reached 70% usage ({{ $value | printf \"%.1f\" }}% remaining in {{ $labels.window }} window)."
+          dashboard_url: "https://monitoring.<your-tailnet>.ts.net/d/litellm-agents-telemetry/agent-observability"
+
+      # Step 3: 80% Used (20% remaining)
+      - alert: OpenCodeQuota80PercentUsed
+        expr: opencode_quota_remaining_percent <= 20 and opencode_quota_remaining_percent > 10
+        for: 1m
+        labels:
+          severity: warning
+          category: quota
+          usage_step: "80%"
+        annotations:
+          summary: "OpenCode quota 80% used ({{ $labels.window }})"
+          progress_bar: "[████████░░] 80% Used · 20% Remaining"
+          description: "OpenCode {{ $labels.provider }} quota on {{ $labels.instance }} has reached 80% usage ({{ $value | printf \"%.1f\" }}% remaining in {{ $labels.window }} window)."
+          dashboard_url: "https://monitoring.<your-tailnet>.ts.net/d/litellm-agents-telemetry/agent-observability"
+
+      # Step 4: 90% Used (10% remaining)
+      - alert: OpenCodeQuota90PercentUsed
+        expr: opencode_quota_remaining_percent <= 10 and opencode_quota_remaining_percent > 0
+        for: 1m
+        labels:
+          severity: critical
+          category: quota
+          usage_step: "90%"
+        annotations:
+          summary: "OpenCode quota 90% used ({{ $labels.window }})"
+          progress_bar: "[█████████░] 90% Used · 10% Remaining"
+          description: "OpenCode {{ $labels.provider }} quota on {{ $labels.instance }} has reached 90% usage ({{ $value | printf \"%.1f\" }}% remaining in {{ $labels.window }} window)."
+          dashboard_url: "https://monitoring.<your-tailnet>.ts.net/d/litellm-agents-telemetry/agent-observability"
+
+      # Step 5: 100% Used (Quota Exhausted)
+      - alert: OpenCodeQuotaExhausted
+        expr: opencode_quota_remaining_percent == 0
+        for: 1m
+        labels:
+          severity: critical
+          category: quota
+          usage_step: "100%"
+        annotations:
+          summary: "OpenCode quota exhausted ({{ $labels.window }})"
+          progress_bar: "[██████████] 100% Used · 0% Remaining"
+          description: "OpenCode {{ $labels.provider }} quota on {{ $labels.instance }} is completely exhausted in {{ $labels.window }} window."
+          dashboard_url: "https://monitoring.<your-tailnet>.ts.net/d/litellm-agents-telemetry/agent-observability"

@@ -1,0 +1,66 @@
+global:
+  resolve_timeout: 5m
+
+route:
+  group_by: ['alertname', 'instance']
+  group_wait: 10s
+  group_interval: 1m
+  repeat_interval: 12h
+  receiver: 'telegram'
+
+receivers:
+  - name: 'telegram'
+    telegram_configs:
+      - bot_token: 'YOUR_TELEGRAM_BOT_TOKEN'
+        chat_id: 123456789
+        # message_thread_id: 12345  # Optional: Telegram topic/thread ID
+        send_resolved: true
+        parse_mode: 'HTML'
+        message: |
+          {{ range .Alerts -}}
+          {{ if eq .Status "firing" -}}
+          {{ if eq .Labels.category "quota" }}🚨 <b>OPENCODE QUOTA ALERT</b>
+          ━━━━━━━━━━━━━━━━━━━━
+          {{ if eq .Labels.severity "critical" }}🔥{{ else }}⚠️{{ end }} <b>Threshold:</b> <code>{{ .Labels.usage_step }} Used</code>
+          • <b>Provider:</b> <code>{{ .Labels.provider }}</code>
+          • <b>Window:</b> <code>{{ .Labels.window }}</code>
+          • <b>Host:</b> <code>{{ .Labels.instance }}</code>
+          {{ if .Annotations.progress_bar }}📊 <code>{{ .Annotations.progress_bar }}</code>{{ end }}
+          • <b>Details:</b> {{ .Annotations.description }}
+          {{ else if eq .Labels.category "availability" }}🔥 <b>NODE OFFLINE ALERT</b>
+          ━━━━━━━━━━━━━━━━━━━━
+          • <b>Alert:</b> <code>{{ .Labels.alertname }}</code> ({{ .Labels.severity }})
+          • <b>Node:</b> <code>{{ .Labels.instance }}</code>
+          {{ if .Labels.tailscale_ip }}• <b>IP:</b> <code>{{ .Labels.tailscale_ip }}</code>{{ end }}
+          {{ if .Labels.os }}• <b>OS:</b> <code>{{ .Labels.os }}</code>{{ end }}
+          • <b>Details:</b> {{ .Annotations.description }}
+          {{ else if eq .Labels.category "storage" }}⚠️ <b>DISK STORAGE ALERT</b>
+          ━━━━━━━━━━━━━━━━━━━━
+          • <b>Alert:</b> <code>{{ .Labels.alertname }}</code>
+          • <b>Host:</b> <code>{{ .Labels.instance }}</code>
+          • <b>Details:</b> {{ .Annotations.description }}
+          {{ else if eq .Labels.category "hardware" }}🌡️ <b>HARDWARE THERMAL ALERT</b>
+          ━━━━━━━━━━━━━━━━━━━━
+          • <b>Alert:</b> <code>{{ .Labels.alertname }}</code>
+          • <b>Host:</b> <code>{{ .Labels.instance }}</code>
+          • <b>Details:</b> {{ .Annotations.description }}
+          {{ else if eq .Labels.category "ai-gateway" }}🤖 <b>AI GATEWAY ALERT</b>
+          ━━━━━━━━━━━━━━━━━━━━
+          • <b>Alert:</b> <code>{{ .Labels.alertname }}</code>
+          • <b>Host:</b> <code>{{ .Labels.instance }}</code>
+          • <b>Details:</b> {{ .Annotations.description }}
+          {{ else }}🚨 <b>ALERT: {{ .Labels.alertname }}</b>
+          ━━━━━━━━━━━━━━━━━━━━
+          • <b>Host:</b> <code>{{ .Labels.instance }}</code>
+          • <b>Severity:</b> <code>{{ .Labels.severity }}</code>
+          • <b>Details:</b> {{ .Annotations.description }}
+          {{ end }}
+          ━━━━━━━━━━━━━━━━━━━━
+          🔗 <a href="{{ if .Annotations.dashboard_url }}{{ .Annotations.dashboard_url }}{{ else }}https://monitoring.<your-tailnet>.ts.net{{ end }}">Open Dashboard</a>
+          {{ else }}✅ <b>RESOLVED: {{ .Annotations.summary }}</b>
+          ━━━━━━━━━━━━━━━━━━━━
+          • <b>Alert:</b> <code>{{ .Labels.alertname }}</code>
+          • <b>Host:</b> <code>{{ .Labels.instance }}</code>
+          ━━━━━━━━━━━━━━━━━━━━
+          {{ end }}
+          {{ end }}

@@ -1,0 +1,108 @@
+groups:
+  - name: fleet_availability_alerts
+    interval: 30s
+    rules:
+      - alert: TailscaleNodeDown
+        expr: up{job="tailscale-nodes"} == 0
+        for: 3m
+        labels:
+          severity: critical
+          category: availability
+        annotations:
+          summary: "Node {{ $labels.instance }} is unreachable"
+          description: "Tailscale node {{ $labels.instance }} ({{ $labels.tailscale_ip }}) has been down or unreachable for over 3 minutes."
+          dashboard_url: "https://monitoring.<your-tailnet>.ts.net/d/tailscale-cmdb/tailscale-homelab-cmdb"
+
+  - name: host_hardware_alerts
+    interval: 30s
+    rules:
+      - alert: DiskWillFillIn24Hours
+        expr: (node_filesystem_free_bytes{fstype=~"ext4|xfs|zfs", mountpoint="/"} / node_filesystem_size_bytes{fstype=~"ext4|xfs|zfs", mountpoint="/"}) < 0.15 and predict_linear(node_filesystem_free_bytes{fstype=~"ext4|xfs|zfs", mountpoint="/"}[4h], 86400) < 0
+        for: 15m
+        labels:
+          severity: warning
+          category: storage
+        annotations:
+          summary: "Root disk filling rapidly on {{ $labels.instance }}"
+          description: "Root partition on {{ $labels.instance }} has less than 15% free space and is projected to fill within 24 hours based on recent 4-hour trend."
+          dashboard_url: "https://monitoring.<your-tailnet>.ts.net/d/rYdddlPWk/node-exporter-full"
+
+      - alert: HostMemoryExhaustion
+        expr: (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) < 0.05
+        for: 5m
+        labels:
+          severity: critical
+          category: memory
+        annotations:
+          summary: "Critically low memory on {{ $labels.instance }}"
+          description: "Available memory on {{ $labels.instance }} is below 5% for over 5 minutes (current: {{ $value | humanizePercentage }})."
+          dashboard_url: "https://monitoring.<your-tailnet>.ts.net/d/rYdddlPWk/node-exporter-full"
+
+      - alert: SBCThermalOverheat
+        expr: (node_thermal_zone_temp > 82) or (node_hwmon_temp_celsius > 82)
+        for: 5m
+        labels:
+          severity: warning
+          category: hardware
+        annotations:
+          summary: "CPU temperature high on {{ $labels.instance }}"
+          description: "Thermal sensor on {{ $labels.instance }} is reporting {{ $value | printf \"%.1f\" }}°C for over 5 minutes."
+          dashboard_url: "https://monitoring.<your-tailnet>.ts.net/d/rYdddlPWk/node-exporter-full"
+
+      - alert: RAIDArrayDegraded
+        expr: node_md_degraded{tailscale_tags=~".*tag:nas.*"} > 0
+        for: 1m
+        labels:
+          severity: critical
+          category: storage
+        annotations:
+          summary: "RAID array {{ $labels.device }} degraded on {{ $labels.instance }}"
+          description: "Software RAID array {{ $labels.device }} on {{ $labels.instance }} is degraded! A member disk has dropped or failed."
+          dashboard_url: "https://monitoring.<your-tailnet>.ts.net/d/nas-raid-storage/nas-raid-storage"
+
+      - alert: RAIDDiskFailed
+        expr: node_md_disks{tailscale_tags=~".*tag:nas.*", state="failed"} > 0
+        for: 1m
+        labels:
+          severity: critical
+          category: storage
+        annotations:
+          summary: "RAID disk failed in {{ $labels.device }} on {{ $labels.instance }}"
+          description: "mdadm reports {{ $value }} failed disk(s) in array {{ $labels.device }} on {{ $labels.instance }}."
+          dashboard_url: "https://monitoring.<your-tailnet>.ts.net/d/nas-raid-storage/nas-raid-storage"
+
+  - name: ai_gateway_alerts
+    interval: 30s
+    rules:
+      - alert: LiteLLMHighErrorRate
+        expr: sum by (instance) (rate(litellm_proxy_failed_requests_metric_total[5m])) / sum by (instance) (rate(litellm_proxy_total_requests_metric_total[5m])) > 0.10
+        for: 3m
+        labels:
+          severity: critical
+          category: ai-gateway
+        annotations:
+          summary: "High LiteLLM failure rate on {{ $labels.instance }}"
+          description: "Over 10% of agent requests through LiteLLM on {{ $labels.instance }} have failed in the last 5 minutes."
+          dashboard_url: "https://monitoring.<your-tailnet>.ts.net/d/litellm-agents-telemetry/agent-observability"
+
+      - alert: AgentLatencyDegraded
+        expr: histogram_quantile(0.90, sum by (le, api_key_alias, instance) (rate(litellm_request_total_latency_metric_bucket[5m]))) > 25
+        for: 5m
+        labels:
+          severity: warning
+          category: ai-gateway
+        annotations:
+          summary: "Agent p90 latency high for {{ $labels.api_key_alias }}"
+          description: "90th percentile latency for agent {{ $labels.api_key_alias }} on {{ $labels.instance }} exceeds 25 seconds (current: {{ $value | printf \"%.1f\" }}s)."
+          dashboard_url: "https://monitoring.<your-tailnet>.ts.net/d/litellm-agents-telemetry/agent-observability"
+
+      - alert: AIMetricsCollectorStale
+        expr: (time() - node_textfile_mtime_seconds{file=~".*ai_metrics.prom"}) > 600
+        for: 5m
+        labels:
+          severity: warning
+          category: pipeline
+        annotations:
+          summary: "AI metrics collection stale on {{ $labels.instance }}"
+          description: "Node Exporter textfile ai_metrics.prom on {{ $labels.instance }} has not been updated for over 10 minutes."
+          dashboard_url: "https://monitoring.<your-tailnet>.ts.net/d/litellm-agents-telemetry/agent-observability"

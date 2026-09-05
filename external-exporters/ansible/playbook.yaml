@@ -1,0 +1,193 @@
+---
+- name: Provision Exporters across Mixed Fleet (Linux, macOS, Windows)
+  hosts: all
+  gather_facts: true
+  vars:
+    node_exporter_version: "1.8.2"
+    windows_exporter_version: "0.28.2"
+
+  tasks:
+    # -------------------------------------------------------------
+    # 1. LINUX NODES
+    # -------------------------------------------------------------
+    - name: Linux - Deploy node_exporter
+      when: ansible_system == 'Linux'
+      become: true
+      block:
+        - name: Map Linux architecture
+          set_fact:
+            linux_arch_map:
+              x86_64: "amd64"
+              aarch64: "arm64"
+              arm64: "arm64"
+              armv7l: "armv7"
+              armv6l: "armv6"
+              i386: "386"
+              i686: "386"
+
+        - name: Set binary architecture
+          set_fact:
+            linux_arch: "{{ linux_arch_map[ansible_architecture] | default('amd64') }}"
+
+        - name: Create node_exporter user
+          user:
+            name: node_exporter
+            shell: /bin/false
+            system: true
+            create_home: false
+
+        - name: Download and extract Linux node_exporter
+          unarchive:
+            src: "https://github.com/prometheus/node_exporter/releases/download/v{{ node_exporter_version }}/node_exporter-{{ node_exporter_version }}.linux-{{ linux_arch }}.tar.gz"
+            dest: "/tmp"
+            remote_src: true
+
+        - name: Copy binary to /usr/local/bin
+          copy:
+            src: "/tmp/node_exporter-{{ node_exporter_version }}.linux-{{ linux_arch }}/node_exporter"
+            dest: "/usr/local/bin/node_exporter"
+            mode: "0755"
+            owner: node_exporter
+            group: node_exporter
+            remote_src: true
+
+        - name: Create systemd unit
+          copy:
+            dest: /etc/systemd/system/node_exporter.service
+            content: |
+              [Unit]
+              Description=Prometheus Node Exporter
+              Wants=network-online.target
+              After=network-online.target
+
+              [Service]
+              User=node_exporter
+              Group=node_exporter
+              Type=simple
+              ExecStart=/usr/local/bin/node_exporter --web.listen-address=:9100
+              Restart=always
+              RestartSec=5
+
+              [Install]
+              WantedBy=multi-user.target
+
+        - name: Reload systemd and start node_exporter
+          systemd:
+            daemon_reload: true
+            name: node_exporter
+            enabled: true
+            state: started
+
+        - name: Clean up temporary files
+          file:
+            path: "/tmp/node_exporter-{{ node_exporter_version }}.linux-{{ linux_arch }}"
+            state: absent
+
+    # -------------------------------------------------------------
+    # 2. MACOS NODES (Apple Silicon & Intel)
+    # -------------------------------------------------------------
+    - name: macOS - Deploy node_exporter
+      when: ansible_os_family == 'Darwin'
+      become: true
+      block:
+        - name: Map Darwin architecture
+          set_fact:
+            darwin_arch: "{{ 'arm64' if ansible_architecture == 'arm64' else 'amd64' }}"
+
+        - name: Download macOS node_exporter archive
+          get_url:
+            url: "https://github.com/prometheus/node_exporter/releases/download/v{{ node_exporter_version }}/node_exporter-{{ node_exporter_version }}.darwin-{{ darwin_arch }}.tar.gz"
+            dest: "/tmp/node_exporter-{{ node_exporter_version }}.darwin-{{ darwin_arch }}.tar.gz"
+            mode: "0644"
+
+        - name: Extract macOS node_exporter using native tar
+          command: "tar -xzf /tmp/node_exporter-{{ node_exporter_version }}.darwin-{{ darwin_arch }}.tar.gz -C /tmp"
+
+        - name: Copy binary to /usr/local/bin
+          copy:
+            src: "/tmp/node_exporter-{{ node_exporter_version }}.darwin-{{ darwin_arch }}/node_exporter"
+            dest: "/usr/local/bin/node_exporter"
+            mode: "0755"
+            owner: root
+            group: wheel
+            remote_src: true
+
+        - name: Create LaunchDaemon plist
+          copy:
+            dest: /Library/LaunchDaemons/io.prometheus.node-exporter.plist
+            owner: root
+            group: wheel
+            mode: "0644"
+            content: |
+              <?xml version="1.0" encoding="UTF-8"?>
+              <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+              <plist version="1.0">
+              <dict>
+                  <key>Label</key>
+                  <string>io.prometheus.node-exporter</string>
+                  <key>ProgramArguments</key>
+                  <array>
+                      <string>/usr/local/bin/node_exporter</string>
+                      <string>--web.listen-address=:9100</string>
+                  </array>
+                  <key>RunAtLoad</key>
+                  <true/>
+                  <key>KeepAlive</key>
+                  <true/>
+              </dict>
+              </plist>
+
+        - name: Check if LaunchDaemon is currently loaded
+          command: launchctl list io.prometheus.node-exporter
+          register: launchctl_status
+          failed_when: false
+          changed_when: false
+
+        - name: Unload existing LaunchDaemon if active
+          command: launchctl unload /Library/LaunchDaemons/io.prometheus.node-exporter.plist
+          when: launchctl_status.rc == 0
+
+        - name: Load LaunchDaemon
+          command: launchctl load -w /Library/LaunchDaemons/io.prometheus.node-exporter.plist
+
+        - name: Clean up temporary files
+          file:
+            path: "{{ item }}"
+            state: absent
+          loop:
+            - "/tmp/node_exporter-{{ node_exporter_version }}.darwin-{{ darwin_arch }}.tar.gz"
+            - "/tmp/node_exporter-{{ node_exporter_version }}.darwin-{{ darwin_arch }}"
+
+    # -------------------------------------------------------------
+    # 3. WINDOWS 11 / WINDOWS SERVER NODES
+    # -------------------------------------------------------------
+    - name: Windows - Deploy windows_exporter
+      when: ansible_os_family == 'Windows'
+      block:
+        - name: Download windows_exporter MSI
+          ansible.windows.win_get_url:
+            url: "https://github.com/prometheus-community/windows_exporter/releases/download/v{{ windows_exporter_version }}/windows_exporter-{{ windows_exporter_version }}-amd64.msi"
+            dest: 'C:\Windows\Temp\windows_exporter.msi'
+
+        - name: Install windows_exporter MSI
+          ansible.windows.win_package:
+            path: 'C:\Windows\Temp\windows_exporter.msi'
+            arguments: 'LISTEN_PORT=9182 ENABLED_COLLECTORS=cpu,cs,logical_disk,net,os,service,system,tcp /qn'
+            state: present
+
+        - name: Configure Windows Firewall for Tailscale subnet
+          community.windows.win_firewall_rule:
+            name: "Prometheus-windows_exporter-Tailscale"
+            localport: "9182"
+            action: allow
+            direction: in
+            protocol: tcp
+            remoteip: "100.64.0.0/10"
+            state: present
+            enabled: true
+
+        - name: Ensure windows_exporter service is running
+          ansible.windows.win_service:
+            name: windows_exporter
+            start_mode: auto
+            state: started

@@ -1,0 +1,22 @@
+# Local secret configurations
+config/alertmanager.yml
+config/alerts/*.local.yml
+*.key
+key.txt
+*.local.yaml
+*.env.local
+.env
+
+# IDE and OS files
+.idea/
+.vscode/
+.DS_Store
+*.swp
+*.swo
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
