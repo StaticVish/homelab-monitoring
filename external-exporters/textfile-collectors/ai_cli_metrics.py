@@ -139,59 +139,66 @@ def scrape_agy(allowed_models: Optional[List[str]] = None) -> List[str]:
 def scrape_opencode() -> List[str]:
     """Scrape OpenCode quotas and local usage statistics."""
     lines = []
+    # Ensure OpenCode CLI binary directory is in PATH
+    extra_paths = ["/home/archiventechnologies/.opencode/bin", "/usr/local/bin"]
+    for p in extra_paths:
+        if os.path.isdir(p) and p not in os.environ.get("PATH", ""):
+            os.environ["PATH"] = f"{p}:{os.environ.get('PATH', '')}"
+
     opencode_bin = find_executable("opencode")
 
-    # 1. Quota scraping via opencode-quota
+    # 1. Quota scraping via opencode-quota live probe
     quota_bin = find_executable("opencode-quota")
-    quota_stdout = None
-    if quota_bin:
-        quota_stdout = run_cmd([quota_bin, "show", "--json"], timeout=15)
-        if not quota_stdout:
-            quota_stdout = run_cmd([quota_bin, "status", "--json"], timeout=15)
-    else:
-        # Fallback to npx if available
-        npx_bin = find_executable("npx")
-        if npx_bin:
-            quota_stdout = run_cmd([npx_bin, "-y", "@slkiser/opencode-quota@latest", "show", "--json"], timeout=20)
+    got_any = False
 
-    if quota_stdout:
-        try:
-            # Extract JSON block if surrounded by logging
-            json_match = re.search(r'\{.*\}', quota_stdout, re.DOTALL)
-            if json_match:
-                data = json.loads(json_match.group(0))
-                got_any = False
-                providers = data.get("providers", data)
-                for prov_name, prov_data in providers.items():
-                    if not isinstance(prov_data, dict) or prov_data.get("status") != "ok":
-                        continue
-                    for entry in prov_data.get("entries", []):
-                        window = str(entry.get("window", "unknown")).lower()
-                        pct = entry.get("percentRemaining")
-                        reset_at = entry.get("resetAt")
-                        if pct is not None:
-                            try:
-                                lines.append(
-                                    f'opencode_quota_remaining_percent{{provider="{prov_name}",window="{window}"}} {float(pct)}'
-                                )
-                                got_any = True
-                            except (ValueError, TypeError):
-                                pass
-                        if reset_at:
-                            try:
-                                lines.append(
-                                    f'opencode_quota_reset_timestamp_seconds{{provider="{prov_name}",window="{window}"}} {int(reset_at)}'
-                                )
-                            except (ValueError, TypeError):
-                                pass
-                if got_any:
-                    lines.insert(0, "opencode_quota_scrape_success 1")
-                    lines.insert(1, f"opencode_quota_last_scrape_timestamp_seconds {int(time.time())}")
-                else:
-                    lines.append("opencode_quota_scrape_success 0")
-        except Exception as exc:
-            logger.debug(f"Failed to parse opencode-quota JSON: {exc}")
-            lines.append("opencode_quota_scrape_success 0")
+    if quota_bin:
+        # Run 'status --provider opencode-go' to force a LIVE network probe against OpenCode API
+        status_stdout = run_cmd([quota_bin, "status", "--provider", "opencode-go"], timeout=20)
+        if status_stdout and "live_probe: success" in status_stdout:
+            import datetime
+            for window_key, window_label in [("rolling", "5h"), ("weekly", "weekly"), ("monthly", "monthly")]:
+                m = re.search(rf"- {window_key}_usage:.*?percent_remaining=(\d+(?:\.\d+)?).*?reset_at=([^\s]+)", status_stdout)
+                if m:
+                    pct = float(m.group(1))
+                    reset_iso = m.group(2)
+                    lines.append(f'opencode_quota_remaining_percent{{provider="opencode-go",window="{window_label}"}} {pct}')
+                    try:
+                        dt = datetime.datetime.fromisoformat(reset_iso.replace("Z", "+00:00"))
+                        reset_ts = int(dt.timestamp())
+                        lines.append(f'opencode_quota_reset_timestamp_seconds{{provider="opencode-go",window="{window_label}"}} {reset_ts}')
+                    except Exception:
+                        pass
+                    got_any = True
+
+        # Fallback to show --json if live probe was unreachable
+        if not got_any:
+            quota_stdout = run_cmd([quota_bin, "show", "--json"], timeout=15)
+            if quota_stdout:
+                try:
+                    json_match = re.search(r'\{.*\}', quota_stdout, re.DOTALL)
+                    if json_match:
+                        data = json.loads(json_match.group(0))
+                        providers = data.get("providers", data)
+                        for prov_name, prov_data in providers.items():
+                            if not isinstance(prov_data, dict) or prov_data.get("status") != "ok":
+                                continue
+                            for entry in prov_data.get("entries", []):
+                                window = str(entry.get("window", "unknown")).lower()
+                                pct = entry.get("percentRemaining")
+                                reset_at = entry.get("resetAt")
+                                if pct is not None:
+                                    lines.append(f'opencode_quota_remaining_percent{{provider="{prov_name}",window="{window}"}} {float(pct)}')
+                                    got_any = True
+                                if reset_at:
+                                    lines.append(f'opencode_quota_reset_timestamp_seconds{{provider="{prov_name}",window="{window}"}} {int(reset_at)}')
+                except Exception as exc:
+                    logger.debug(f"Failed to parse fallback opencode-quota JSON: {exc}")
+
+    if got_any:
+        lines.insert(0, "opencode_quota_scrape_success 1")
+        lines.insert(1, f"opencode_quota_last_scrape_timestamp_seconds {int(time.time())}")
+    else:
+        lines.append("opencode_quota_scrape_success 0")
 
     # 2. OpenCode local stats (cost & token counts)
     if opencode_bin:
