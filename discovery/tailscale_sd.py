@@ -99,6 +99,19 @@ def build_prometheus_targets(status_data, exporter_port=DEFAULT_EXPORTER_PORT, w
         if tag_filter and not any(t in tags for t in tag_filter):
             return
 
+        # Determine node role based on tags or OS
+        tag_str = " ".join(tags).lower()
+        if "laptop" in tag_str:
+            role = "laptop"
+        elif "workstation" in tag_str:
+            role = "workstation"
+        elif any(s in tag_str for s in ("server", "nas", "edge")):
+            role = "server"
+        elif os_name in ("macos", "windows"):
+            role = "workstation"
+        else:
+            role = "server"
+
         # Select target port: Windows uses windows_exporter (9182), Linux/macOS use node_exporter (9100)
         target_port = windows_port if os_name == "windows" else exporter_port
 
@@ -109,6 +122,7 @@ def build_prometheus_targets(status_data, exporter_port=DEFAULT_EXPORTER_PORT, w
                 "dns_name": dns_name or hostname,
                 "tailscale_ip": ipv4,
                 "os": os_name,
+                "role": role,
                 "tailscale_tags": ",".join(tags) if tags else "none",
                 "job": "tailscale-nodes",
             },

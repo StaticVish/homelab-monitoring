@@ -2,15 +2,27 @@ groups:
   - name: fleet_availability_alerts
     interval: 30s
     rules:
-      - alert: TailscaleNodeDown
-        expr: up{job="tailscale-nodes"} == 0
+      - alert: ServerDown
+        expr: up{job="tailscale-nodes", role="server"} == 0
         for: 3m
+        keep_firing_for: 10m
         labels:
           severity: critical
           category: availability
         annotations:
-          summary: "Node {{ $labels.instance }} is unreachable"
-          description: "Tailscale node {{ $labels.instance }} ({{ $labels.tailscale_ip }}) has been down or unreachable for over 3 minutes."
+          summary: "Server {{ $labels.instance }} is unreachable"
+          description: "Infrastructure server {{ $labels.instance }} ({{ $labels.tailscale_ip }}) has been down or unreachable for over 3 minutes."
+          dashboard_url: "https://monitoring.<your-tailnet>.ts.net/d/tailscale-cmdb/tailscale-homelab-cmdb"
+
+      - alert: DeviceOnline
+        expr: up{job="tailscale-nodes", role=~"laptop|workstation"} == 1
+        for: 2m
+        labels:
+          severity: info
+          category: device-online
+        annotations:
+          summary: "{{ $labels.instance }} is online"
+          description: "Device {{ $labels.instance }} ({{ $labels.os }}) is active on Tailnet ({{ $labels.tailscale_ip }}) for over 2 minutes."
           dashboard_url: "https://monitoring.<your-tailnet>.ts.net/d/tailscale-cmdb/tailscale-homelab-cmdb"
 
   - name: host_hardware_alerts

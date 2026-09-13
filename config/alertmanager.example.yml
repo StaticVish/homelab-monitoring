@@ -27,10 +27,16 @@ receivers:
           • <b>Host:</b> <code>{{ .Labels.instance }}</code>
           {{ if .Annotations.progress_bar }}📊 <code>{{ .Annotations.progress_bar }}</code>{{ end }}
           • <b>Details:</b> {{ .Annotations.description }}
-          {{ else if eq .Labels.category "availability" }}🔥 <b>NODE OFFLINE ALERT</b>
+          {{ else if eq .Labels.category "device-online" }}💻 <b>DEVICE ONLINE</b>
+          ━━━━━━━━━━━━━━━━━━━━
+          • <b>Device:</b> <code>{{ .Labels.instance }}</code> ({{ .Labels.os }})
+          {{ if .Labels.tailscale_ip }}• <b>IP:</b> <code>{{ .Labels.tailscale_ip }}</code>{{ end }}
+          • <b>Role:</b> <code>{{ .Labels.role }}</code>
+          • <b>Status:</b> Active on Tailnet for > 2 minutes
+          {{ else if eq .Labels.category "availability" }}🔥 <b>SERVER OFFLINE ALERT</b>
           ━━━━━━━━━━━━━━━━━━━━
           • <b>Alert:</b> <code>{{ .Labels.alertname }}</code> ({{ .Labels.severity }})
-          • <b>Node:</b> <code>{{ .Labels.instance }}</code>
+          • <b>Server:</b> <code>{{ .Labels.instance }}</code>
           {{ if .Labels.tailscale_ip }}• <b>IP:</b> <code>{{ .Labels.tailscale_ip }}</code>{{ end }}
           {{ if .Labels.os }}• <b>OS:</b> <code>{{ .Labels.os }}</code>{{ end }}
           • <b>Details:</b> {{ .Annotations.description }}
@@ -57,6 +63,11 @@ receivers:
           {{ end }}
           ━━━━━━━━━━━━━━━━━━━━
           🔗 <a href="{{ if .Annotations.dashboard_url }}{{ .Annotations.dashboard_url }}{{ else }}https://monitoring.<your-tailnet>.ts.net{{ end }}">Open Dashboard</a>
+          {{ if eq .Labels.category "device-online" }}💤 <b>DEVICE DISCONNECTED</b>
+          ━━━━━━━━━━━━━━━━━━━━
+          • <b>Device:</b> <code>{{ .Labels.instance }}</code> ({{ .Labels.os }})
+          • <b>Status:</b> Offline / Sleeping
+          ━━━━━━━━━━━━━━━━━━━━
           {{ else }}✅ <b>RESOLVED: {{ .Annotations.summary }}</b>
           ━━━━━━━━━━━━━━━━━━━━
           • <b>Alert:</b> <code>{{ .Labels.alertname }}</code>
