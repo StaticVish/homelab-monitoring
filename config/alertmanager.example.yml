@@ -20,58 +20,45 @@ receivers:
           {{ range .Alerts -}}
           {{ if eq .Status "firing" -}}
           {{ if eq .Labels.category "quota" }}🚨 <b>OPENCODE QUOTA ALERT</b>
-          ━━━━━━━━━━━━━━━━━━━━
-          {{ if eq .Labels.severity "critical" }}🔥{{ else }}⚠️{{ end }} <b>Threshold:</b> <code>{{ .Labels.usage_step }} Used</code>
-          • <b>Provider:</b> <code>{{ .Labels.provider }}</code>
-          • <b>Window:</b> <code>{{ .Labels.window }}</code>
-          • <b>Host:</b> <code>{{ .Labels.instance }}</code>
-          {{ if .Annotations.progress_bar }}📊 <code>{{ .Annotations.progress_bar }}</code>{{ end }}
-          • <b>Details:</b> {{ .Annotations.description }}
+          <pre>Provider : {{ .Labels.provider }}
+          Window   : {{ .Labels.window }} ({{ .Labels.usage_step }} used)
+          Host     : {{ .Labels.instance }}
+          Quota    : {{ if .Annotations.progress_bar }}{{ .Annotations.progress_bar }}{{ else }}{{ .Annotations.description }}{{ end }}</pre>
           {{ else if eq .Labels.category "device-online" }}💻 <b>DEVICE ONLINE</b>
-          ━━━━━━━━━━━━━━━━━━━━
-          • <b>Device:</b> <code>{{ .Labels.instance }}</code> ({{ .Labels.os }})
-          {{ if .Labels.tailscale_ip }}• <b>IP:</b> <code>{{ .Labels.tailscale_ip }}</code>{{ end }}
-          • <b>Role:</b> <code>{{ .Labels.role }}</code>
-          • <b>Status:</b> Active on Tailnet for > 2 minutes
-          {{ else if eq .Labels.category "availability" }}🔥 <b>SERVER OFFLINE ALERT</b>
-          ━━━━━━━━━━━━━━━━━━━━
-          • <b>Alert:</b> <code>{{ .Labels.alertname }}</code> ({{ .Labels.severity }})
-          • <b>Server:</b> <code>{{ .Labels.instance }}</code>
-          {{ if .Labels.tailscale_ip }}• <b>IP:</b> <code>{{ .Labels.tailscale_ip }}</code>{{ end }}
-          {{ if .Labels.os }}• <b>OS:</b> <code>{{ .Labels.os }}</code>{{ end }}
-          • <b>Details:</b> {{ .Annotations.description }}
-          {{ else if eq .Labels.category "storage" }}⚠️ <b>DISK STORAGE ALERT</b>
-          ━━━━━━━━━━━━━━━━━━━━
-          • <b>Alert:</b> <code>{{ .Labels.alertname }}</code>
-          • <b>Host:</b> <code>{{ .Labels.instance }}</code>
-          • <b>Details:</b> {{ .Annotations.description }}
-          {{ else if eq .Labels.category "hardware" }}🌡️ <b>HARDWARE THERMAL ALERT</b>
-          ━━━━━━━━━━━━━━━━━━━━
-          • <b>Alert:</b> <code>{{ .Labels.alertname }}</code>
-          • <b>Host:</b> <code>{{ .Labels.instance }}</code>
-          • <b>Details:</b> {{ .Annotations.description }}
+          <pre>Device : {{ .Labels.instance }} ({{ .Labels.os }})
+          IP     : {{ .Labels.tailscale_ip }}
+          Role   : {{ .Labels.role }}
+          Status : Active on Tailnet (> 2m)</pre>
+          {{ else if eq .Labels.category "availability" }}🔥 <b>SERVER OFFLINE</b>
+          <pre>Server : {{ .Labels.instance }} ({{ .Labels.os }})
+          IP     : {{ .Labels.tailscale_ip }}
+          Alert  : {{ .Labels.alertname }} ({{ .Labels.severity }})
+          Impact : {{ .Annotations.description }}</pre>
+          {{ else if eq .Labels.category "storage" }}⚠️ <b>STORAGE ALERT</b>
+          <pre>Host    : {{ .Labels.instance }}
+          Alert   : {{ .Labels.alertname }} ({{ .Labels.severity }})
+          Details : {{ .Annotations.description }}</pre>
+          {{ else if eq .Labels.category "hardware" }}🌡️ <b>HARDWARE ALERT</b>
+          <pre>Host    : {{ .Labels.instance }}
+          Alert   : {{ .Labels.alertname }} ({{ .Labels.severity }})
+          Details : {{ .Annotations.description }}</pre>
           {{ else if eq .Labels.category "ai-gateway" }}🤖 <b>AI GATEWAY ALERT</b>
-          ━━━━━━━━━━━━━━━━━━━━
-          • <b>Alert:</b> <code>{{ .Labels.alertname }}</code>
-          • <b>Host:</b> <code>{{ .Labels.instance }}</code>
-          • <b>Details:</b> {{ .Annotations.description }}
-          {{ else }}🚨 <b>ALERT: {{ .Labels.alertname }}</b>
-          ━━━━━━━━━━━━━━━━━━━━
-          • <b>Host:</b> <code>{{ .Labels.instance }}</code>
-          • <b>Severity:</b> <code>{{ .Labels.severity }}</code>
-          • <b>Details:</b> {{ .Annotations.description }}
+          <pre>Host    : {{ .Labels.instance }}
+          Alert   : {{ .Labels.alertname }} ({{ .Labels.severity }})
+          Details : {{ .Annotations.description }}</pre>
+          {{ else }}🚨 <b>SYSTEM ALERT</b>
+          <pre>Target  : {{ .Labels.instance }}
+          Alert   : {{ .Labels.alertname }} ({{ .Labels.severity }})
+          Details : {{ .Annotations.description }}</pre>
           {{ end }}
-          ━━━━━━━━━━━━━━━━━━━━
-          🔗 <a href="{{ if .Annotations.dashboard_url }}{{ .Annotations.dashboard_url }}{{ else }}https://monitoring.<your-tailnet>.ts.net{{ end }}">Open Dashboard</a>
+          {{- else -}}
           {{ if eq .Labels.category "device-online" }}💤 <b>DEVICE DISCONNECTED</b>
-          ━━━━━━━━━━━━━━━━━━━━
-          • <b>Device:</b> <code>{{ .Labels.instance }}</code> ({{ .Labels.os }})
-          • <b>Status:</b> Offline / Sleeping
-          ━━━━━━━━━━━━━━━━━━━━
-          {{ else }}✅ <b>RESOLVED: {{ .Annotations.summary }}</b>
-          ━━━━━━━━━━━━━━━━━━━━
-          • <b>Alert:</b> <code>{{ .Labels.alertname }}</code>
-          • <b>Host:</b> <code>{{ .Labels.instance }}</code>
-          ━━━━━━━━━━━━━━━━━━━━
+          <pre>Device : {{ .Labels.instance }} ({{ .Labels.os }})
+          Status : Offline / Sleeping</pre>
+          {{ else }}✅ <b>ALERT RESOLVED</b>
+          <pre>Alert  : {{ .Labels.alertname }}
+          Target : {{ .Labels.instance }}
+          Status : Normal / Healthy</pre>
           {{ end }}
+          {{- end }}
           {{ end }}
